@@ -1,3 +1,5 @@
+import io
+
 def get_all_tickers():
     """Return combined S&P 500 + NASDAQ 100 tickers, deduplicated."""
     sp500 = _get_sp500_from_wikipedia()
@@ -15,12 +17,13 @@ def get_sp500_tickers():
 def _get_sp500_from_wikipedia():
     """Fetch S&P 500 tickers from Wikipedia with fallback."""
     try:
-        import requests, pandas as pd
+        import requests
+        import pandas as pd
         url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
         headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'}
         resp = requests.get(url, headers=headers, timeout=15)
         resp.raise_for_status()
-        df = pd.read_html(resp.text)[0]
+        df = pd.read_html(io.StringIO(resp.text))[0]
         tickers = [t.replace('.', '-') for t in df['Symbol'].tolist()]
         print(f'S&P 500: loaded {len(tickers)} from Wikipedia')
         return tickers
@@ -32,12 +35,13 @@ def _get_sp500_from_wikipedia():
 def _get_nasdaq100_from_wikipedia():
     """Fetch NASDAQ-100 tickers from Wikipedia with fallback."""
     try:
-        import requests, pandas as pd
+        import requests
+        import pandas as pd
         url = 'https://en.wikipedia.org/wiki/Nasdaq-100'
         headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'}
         resp = requests.get(url, headers=headers, timeout=15)
         resp.raise_for_status()
-        tables = pd.read_html(resp.text)
+        tables = pd.read_html(io.StringIO(resp.text))
         # Find the table with 'Ticker' or 'Symbol' column
         for t in tables:
             cols = [c.lower() for c in t.columns]
