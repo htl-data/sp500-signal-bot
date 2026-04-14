@@ -4,94 +4,115 @@ from datetime import date
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-
-def send_email(golden_crosses, death_crosses, market_bullish):
+def send_email(sepa_strong, sepa_moderate, market_bullish):
     sender = os.environ['EMAIL_USER']
     password = os.environ['EMAIL_PASS']
     receiver = os.environ['EMAIL_TO']
     today = date.today().strftime('%Y-%m-%d')
-
-    bullish_emoji = 'BULLISH' if market_bullish else 'BEARISH'
+    
+    bullish_label = 'BULLISH' if market_bullish else 'BEARISH'
     market_color = '#27ae60' if market_bullish else '#e74c3c'
-    gc_count = len(golden_crosses)
-    dc_count = len(death_crosses)
-
-    # ---- HTML body ----
-    def ticker_rows(tickers, color, symbol):
-        if not tickers:
-            return '<tr><td colspan="2" style="color:#888;padding:8px">None today</td></tr>'
+    strong_count = len(sepa_strong)
+    moderate_count = len(sepa_moderate)
+    
+    def stock_rows_html(stocks, tier_color):
+        if not stocks:
+            return '<tr><td colspan="7" style="color:#888;padding:8px;text-align:center">None</td></tr>'
         rows = ''
-        for t in tickers:
-            rows += f'<tr><td style="padding:6px 12px;font-weight:bold;color:{color}">{symbol} {t}</td><td style="padding:6px 12px"><a href="https://finance.yahoo.com/quote/{t}" style="color:#2980b9">Yahoo Finance</a></td></tr>'
+        for s in stocks:
+            ticker = s['ticker']
+            sepa = s['sepa_score']
+            vcp = s['vcp_score']
+            rsi = s['rsi']
+            low52 = s['pct_above_low52']
+            high52 = s['pct_from_high52']
+            vol_dry = '✓' if s['vol_dry'] else ''
+            tight = '✓' if s['tight'] else ''
+            rows += f'''
+            <tr style="background:#f9f9f9">
+                <td style="padding:8px;font-weight:bold;color:{tier_color}"><a href="https://finance.yahoo.com/quote/{ticker}" style="color:{tier_color};text-decoration:none">{ticker}</a></td>
+                <td style="padding:8px;text-align:center">{sepa}/7</td>
+                <td style="padding:8px;text-align:center">{vcp}/2</td>
+                <td style="padding:8px;text-align:center">{rsi}</td>
+                <td style="padding:8px;text-align:center">{low52}%</td>
+                <td style="padding:8px;text-align:center">{high52}%</td>
+                <td style="padding:8px;text-align:center">{vol_dry} {tight}</td>
+            </tr>
+            '''
         return rows
-
-    html = f"""
-    <html><body style="font-family:Arial,sans-serif;max-width:600px;margin:auto;background:#f9f9f9;padding:20px">
+    
+    html = f'''
+    <html><body style="font-family:Arial,sans-serif;max-width:800px;margin:auto;background:#f9f9f9;padding:20px">
     <div style="background:#1a1a2e;color:#fff;padding:20px;border-radius:8px 8px 0 0;text-align:center">
-        <h2 style="margin:0">SP500 + NASDAQ Signal Report</h2>
+        <h2 style="margin:0">SEPA Stock Scanner Report</h2>
         <p style="margin:4px 0;opacity:0.8">{today}</p>
+        <p style="margin:4px 0;font-size:14px;opacity:0.7">Mark Minervini SEPA + VCP Strategy</p>
     </div>
     <div style="background:#fff;padding:20px;border:1px solid #ddd">
-        <p style="font-size:15px">Market Trend (SPY MA50 vs MA200): <strong style="color:{market_color}">{bullish_emoji}</strong></p>
+        <p style="font-size:15px">Market Trend (SPY): <strong style="color:{market_color}">{bullish_label}</strong></p>
         <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
-            <tr style="background:#eaf4ea">
-                <td style="padding:10px;font-size:14px">Golden Cross (Bullish)</td>
-                <td style="padding:10px;font-size:20px;font-weight:bold;color:#27ae60;text-align:right">{gc_count}</td>
+            <tr style="background:#d5f4e6">
+                <td style="padding:10px">SEPA Strong (6/7+ trend + VCP)</td>
+                <td style="padding:10px;font-size:20px;font-weight:bold;color:#27ae60;text-align:right">{strong_count}</td>
             </tr>
-            <tr style="background:#fdecea">
-                <td style="padding:10px;font-size:14px">Death Cross (Bearish)</td>
-                <td style="padding:10px;font-size:20px;font-weight:bold;color:#e74c3c;text-align:right">{dc_count}</td>
+            <tr style="background:#fff3cd">
+                <td style="padding:10px">SEPA Moderate (5/7+ trend)</td>
+                <td style="padding:10px;font-size:20px;font-weight:bold;color:#f39c12;text-align:right">{moderate_count}</td>
             </tr>
         </table>
 
-        <h3 style="color:#27ae60;border-bottom:2px solid #27ae60;padding-bottom:6px">Golden Cross Signals</h3>
-        <table style="width:100%;border-collapse:collapse">
-            {ticker_rows(golden_crosses, '#27ae60', '+')}
+        <h3 style="color:#27ae60;border-bottom:2px solid #27ae60;padding-bottom:6px">SEPA Strong Candidates</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+            <tr style="background:#e8f5e9;font-weight:bold;font-size:12px">
+                <th style="padding:8px;text-align:left">Ticker</th>
+                <th style="padding:8px;text-align:center">SEPA</th>
+                <th style="padding:8px;text-align:center">VCP</th>
+                <th style="padding:8px;text-align:center">RSI</th>
+                <th style="padding:8px;text-align:center">+Low52</th>
+                <th style="padding:8px;text-align:center">-High52</th>
+                <th style="padding:8px;text-align:center">Vol Tight</th>
+            </tr>
+            {stock_rows_html(sepa_strong, '#27ae60')}
         </table>
 
-        <h3 style="color:#e74c3c;border-bottom:2px solid #e74c3c;padding-bottom:6px;margin-top:20px">Death Cross Signals</h3>
+        <h3 style="color:#f39c12;border-bottom:2px solid #f39c12;padding-bottom:6px">SEPA Moderate</h3>
         <table style="width:100%;border-collapse:collapse">
-            {ticker_rows(death_crosses, '#e74c3c', '-')}
+            <tr style="background:#fff8e1;font-weight:bold;font-size:12px">
+                <th style="padding:8px;text-align:left">Ticker</th>
+                <th style="padding:8px;text-align:center">SEPA</th>
+                <th style="padding:8px;text-align:center">VCP</th>
+                <th style="padding:8px;text-align:center">RSI</th>
+                <th style="padding:8px;text-align:center">+Low52</th>
+                <th style="padding:8px;text-align:center">-High52</th>
+                <th style="padding:8px;text-align:center">Vol Tight</th>
+            </tr>
+            {stock_rows_html(sepa_moderate, '#f39c12')}
         </table>
     </div>
     <div style="background:#eee;padding:12px;text-align:center;font-size:11px;color:#888;border-radius:0 0 8px 8px">
-        Universe: S&amp;P 500 + NASDAQ-100 (~523 tickers) | Filters: Volume &gt; 20d avg, RSI in range<br>
-        Automated by <a href="https://github.com/htl-data/sp500-signal-bot">sp500-signal-bot</a>
+        SEPA Criteria: MA50>MA150>MA200, MA200 up, Price>30% above 52w low, Price within 25% of 52w high<br>
+        VCP: Volume dry-up + Price tightness | Universe: S&P500 + NASDAQ100
     </div>
     </body></html>
-    """
-
-    # ---- Plain text fallback ----
-    plain_lines = [
-        f'S&P 500 + NASDAQ Daily Signal Report - {today}',
-        f'Market Status: {bullish_emoji} (SPY MA50 vs MA200)',
-        '',
-        f'GOLDEN CROSS ({gc_count}):',
-    ]
-    for t in golden_crosses:
-        plain_lines.append(f'  + {t}')
-    if not golden_crosses:
-        plain_lines.append('  None today')
-    plain_lines.append('')
-    plain_lines.append(f'DEATH CROSS ({dc_count}):')
-    for t in death_crosses:
-        plain_lines.append(f'  - {t}')
-    if not death_crosses:
-        plain_lines.append('  None today')
-    plain_lines.append('')
-    plain_lines.append('Universe: S&P 500 + NASDAQ-100 | github.com/htl-data/sp500-signal-bot')
-    plain_text = '\n'.join(plain_lines)
-
-    subject = f'[Signal Bot] {today} | GC:{gc_count} DC:{dc_count} | SPY:{bullish_emoji}'
-
+    '''
+    
+    plain_text = f'''SEPA Stock Scanner Report - {today}\nMarket: {bullish_label}\n\nSEPA Strong: {strong_count}\n'''
+    for s in sepa_strong:
+        plain_text += f"  {s['ticker']} | SEPA:{s['sepa_score']}/7 VCP:{s['vcp_score']}/2 RSI:{s['rsi']}\n"
+    plain_text += f"\nSEPA Moderate: {moderate_count}\n"
+    for s in sepa_moderate:
+        plain_text += f"  {s['ticker']} | SEPA:{s['sepa_score']}/7\n"
+    
+    subject = f'[SEPA Scanner] {today} | Strong:{strong_count} Mod:{moderate_count} | {bullish_label}'
+    
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
     msg['From'] = sender
     msg['To'] = receiver
     msg.attach(MIMEText(plain_text, 'plain'))
     msg.attach(MIMEText(html, 'html'))
-
+    
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
         server.login(sender, password)
         server.send_message(msg)
-    print(f'Email sent: {gc_count} golden cross, {dc_count} death cross signals.')
+    print(f'Email sent: {strong_count} SEPA strong, {moderate_count} moderate signals.')
