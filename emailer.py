@@ -14,7 +14,7 @@ def send_email(golden_crosses, death_crosses, market_bullish):
     market_status = 'BULLISH (SPY MA50 > MA200)' if market_bullish else 'BEARISH (SPY MA50 < MA200)'
 
     lines = []
-    lines.append(f'S&P 500 Daily Signal Report - {today}')
+    lines.append(f'S&P 500 + NASDAQ Daily Signal Report - {today}')
     lines.append(f'Market Status: {market_status}')
     lines.append('')
 
@@ -35,13 +35,14 @@ def send_email(golden_crosses, death_crosses, market_bullish):
         lines.append('DEATH CROSS: None today')
 
     lines.append('')
-    lines.append('Filters applied: Volume > 20-day avg | RSI in valid range | SPY trend check')
-    lines.append('--- Automated by sp500-signal-bot ---')
+    lines.append('Universe: S&P 500 + NASDAQ-100 (deduplicated)')
+    lines.append('Filters: Volume > 20-day avg | RSI in valid range | SPY trend check')
+    lines.append('--- Automated by signal-bot (github.com/htl-data/sp500-signal-bot) ---')
 
     content = '\n'.join(lines)
 
     msg = MIMEMultipart()
-    msg['Subject'] = f'S&P500 Signals {today} | GC:{len(golden_crosses)} DC:{len(death_crosses)}'
+    msg['Subject'] = f'SP500+NDX Signals {today} | GC:{len(golden_crosses)} DC:{len(death_crosses)} | {market_status[:7]}'
     msg['From'] = sender
     msg['To'] = receiver
     msg.attach(MIMEText(content, 'plain'))
