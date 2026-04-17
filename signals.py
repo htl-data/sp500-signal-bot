@@ -41,7 +41,8 @@ def sepa_trend_template(df):
         ma200 = float(df['MA200'].iloc[-1])
         high52 = float(df['High52w'].iloc[-1])
         low52 = float(df['Low52w'].iloc[-1])
-        ma200_20d_ago = float(df['MA200'].iloc[-21]) if len(df) > 20 else ma200
+        ma200_series = df['MA200'].dropna()
+        ma200_20d_ago = float(ma200_series.iloc[-21]) if len(ma200_series) >= 21 else float(ma200_series.iloc[0])
         ma200_up = ma200 > ma200_20d_ago
         pct_above_low = ((close - low52) / low52) * 100 if low52 > 0 else 0
         pct_from_high = ((high52 - close) / high52) * 100 if high52 > 0 else 100
@@ -70,7 +71,9 @@ def vcp_score(df):
         vol50 = float(df['Vol50'].iloc[-1])
         vol_dry = vol_recent < vol50 * 0.7
         recent_range = (df['High'].iloc[-10:].max() - df['Low'].iloc[-10:].min()) / df['Close'].iloc[-1]
-        earlier_range = (df['High'].iloc[-30:-10].max() - df['Low'].iloc[-30:-10].min()) / df['Close'].iloc[-20]
+        base_close = float(df['Close'].iloc[-1])
+        recent_range  = (df['High'].iloc[-10:].max()    - df['Low'].iloc[-10:].min())    / base_close
+        earlier_range = (df['High'].iloc[-30:-10].max() - df['Low'].iloc[-30:-10].min()) / base_close
         tight = recent_range < earlier_range * 0.5
         return {'vol_dry': vol_dry, 'tight': tight, 'score': int(vol_dry) + int(tight)}
     except Exception:
@@ -85,7 +88,7 @@ def analyze_stock(ticker):
     rsi = float(df['RSI'].iloc[-1]) if not pd.isna(df['RSI'].iloc[-1]) else 50
     total_score = trend['score'] + vcp['score']
     signal_type = None
-    if trend['pass'] and vcp['score'] >= 1:
+    if trend['pass'] and vcp['score'] >= 1 and rsi >= 70:
         signal_type = 'SEPA_STRONG'
     elif trend['score'] >= 5:
         signal_type = 'SEPA_MODERATE'
